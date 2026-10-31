@@ -197,8 +197,126 @@ export const exams = {
     `${API_BASE}/batches/${batchId}/exams/${examId}/pdf/semester`,
 };
 
+// ── Result analysis & remedial actions ─────────────────────────────────────────
+export const analysis = {
+  get: (batchId, examId, exam) =>
+    request(`/batches/${batchId}/exams/${examId}/analysis?exam=${exam}`),
+
+  pdfUrl: (batchId, examId, exam) =>
+    `${API_BASE}/batches/${batchId}/exams/${examId}/analysis/pdf?exam=${exam}`,
+
+  listRemedial: (batchId, examId) =>
+    request(`/batches/${batchId}/exams/${examId}/remedial`),
+
+  addRemedial: (batchId, examId, data) =>
+    request(`/batches/${batchId}/exams/${examId}/remedial`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deleteRemedial: (batchId, examId, actionId) =>
+    request(`/batches/${batchId}/exams/${examId}/remedial/${actionId}`, { method: "DELETE" }),
+};
+
+// ── Documents (uploads) ────────────────────────────────────────────────────────
+export const documents = {
+  list: (batchId, category) =>
+    request(`/batches/${batchId}/documents${category ? `?category=${category}` : ""}`),
+
+  // fields: { category, title, notes?, from_date?, to_date? }
+  upload: async (batchId, studentId, fields, file) => {
+    const form = new FormData();
+    Object.entries(fields).forEach(([k, v]) => { if (v) form.append(k, v); });
+    form.append("file", file);
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/batches/${batchId}/students/${studentId}/documents`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      const detail = data?.detail;
+      throw new Error((Array.isArray(detail) ? detail[0]?.msg : detail) || `Upload failed (${res.status})`);
+    }
+    return data;
+  },
+
+  delete: (batchId, documentId) =>
+    request(`/batches/${batchId}/documents/${documentId}`, { method: "DELETE" }),
+
+  downloadUrl: (batchId, documentId) =>
+    `${API_BASE}/batches/${batchId}/documents/${documentId}/download`,
+};
+
+// ── Mentor file ────────────────────────────────────────────────────────────────
+function recordApi(resource) {
+  return {
+    list: (batchId) => request(`/batches/${batchId}/${resource}`),
+
+    create: (batchId, data) =>
+      request(`/batches/${batchId}/${resource}`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    delete: (batchId, recordId) =>
+      request(`/batches/${batchId}/${resource}/${recordId}`, { method: "DELETE" }),
+  };
+}
+
+export const mentorFile = {
+  summary: (batchId) => request(`/batches/${batchId}/mentor-file/summary`),
+
+  coverUrl: (batchId) => `${API_BASE}/batches/${batchId}/mentor-file/cover`,
+};
+
+export const communications = {
+  ...recordApi("communications"),
+
+  pdfUrl: (batchId) => `${API_BASE}/batches/${batchId}/communications/pdf`,
+};
+
+export const parentMeetings = {
+  ...recordApi("parent-meetings"),
+
+  pdfUrl: (batchId, meetingId) =>
+    `${API_BASE}/batches/${batchId}/parent-meetings/${meetingId}/pdf`,
+};
+
+export const achievements = {
+  ...recordApi("achievements"),
+
+  pdfUrl: (batchId, studentId, academicYear) =>
+    `${API_BASE}/batches/${batchId}/students/${studentId}/achievements/pdf?academic_year=${encodeURIComponent(academicYear)}`,
+};
+
+export const condonations = {
+  ...recordApi("condonations"),
+
+  pdfUrl: (batchId, condonationId) =>
+    `${API_BASE}/batches/${batchId}/condonations/${condonationId}/pdf`,
+};
+
+export const semesterResults = {
+  list: (batchId) => request(`/batches/${batchId}/semester-results`),
+
+  save: (batchId, records) =>
+    request(`/batches/${batchId}/semester-results`, {
+      method: "PUT",
+      body: JSON.stringify({ records }),
+    }),
+
+  pdfUrl: (batchId, academicYear) =>
+    `${API_BASE}/batches/${batchId}/semester-results/pdf?academic_year=${encodeURIComponent(academicYear)}`,
+};
+
 // ── AI ─────────────────────────────────────────────────────────────────────────
 export const ai = {
+  // Computed metrics and risk level, plus the last saved report and study plan
+  overview: (batchId, studentId) =>
+    request(`/batches/${batchId}/students/${studentId}/ai/overview`),
+
   report: (batchId, studentId) =>
     request(`/batches/${batchId}/students/${studentId}/ai/report`, { method: "POST" }),
 

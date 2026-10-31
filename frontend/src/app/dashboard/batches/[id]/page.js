@@ -1,12 +1,21 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { batches, students } from "@/lib/api";
+import { ai, batches, students } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import StudentModal from "@/components/StudentModal";
 import ConfirmModal from "@/components/ConfirmModal";
-import { Calendar, BarChart2, Pencil, Trash2, FileDown, Plus, ClipboardList, Bot, Users, GraduationCap } from "@/lib/icons";
+import {
+  Calendar, BarChart2, Pencil, Trash2, FileDown, Plus, ClipboardList, Bot, Users, FolderOpen,
+  Search, ChevronRight, AlertCircle,
+} from "@/lib/icons";
+
+const LEVELS = ["High", "Medium", "Low"];
+
+function initials(name) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+}
 
 export default function BatchDetailPage() {
   const { id } = useParams();
@@ -16,31 +25,79 @@ export default function BatchDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Modal state
   const [studentModal, setStudentModal] = useState(null); // null | { mode: "add" } | { mode: "edit", student }
   const [confirmDelete, setConfirmDelete] = useState(null); // null | { type: "student"|"batch", id? }
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
 
-  // Edit batch inline
   const [editingBatch, setEditingBatch] = useState(false);
   const [batchForm, setBatchForm] = useState({ department: "", batch_year: "" });
   const [batchSaving, setBatchSaving] = useState(false);
 
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("All");
+  const [insights, setInsights] = useState({}); // studentId -> { level, score, reasons, pt, cgpa }
+  const asked = useRef(new Set());
+  const hasBatch = useRef(false);
+
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const data = await batches.get(id);
       setBatch(data);
+      hasBatch.current = true;
       setBatchForm({ department: data.department, batch_year: data.batch_year });
+      try { sessionStorage.setItem(`batch:${id}`, JSON.stringify(data)); } catch { /* ignore */ }
     } catch (e) {
-      setError(e.message);
+      // A failed background refresh is silent when the page already has data to show.
+      if (!hasBatch.current) setError(e.message);
     } finally {
       setLoading(false);
     }
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    // A revisit shows the saved copy straight away while the fresh one loads.
+    try {
+      const saved = sessionStorage.getItem(`batch:${id}`);
+      if (saved) { setBatch(JSON.parse(saved)); hasBatch.current = true; setLoading(false); }
+    } catch { /* storage unavailable */ }
+    load();
+  }, [load, id]);
+
+  // Show the last known risk levels straight away (kept for this browser session), then refresh them.
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(`risk:${id}`);
+      if (saved) setInsights(JSON.parse(saved));
+    } catch { /* storage unavailable */ }
+  }, [id]);
+
+  // Risk level, latest test average and CGPA for each student, a few requests at a time.
+  useEffect(() => {
+    if (!batch) return;
+    const todo = batch.students.filter((s) => !asked.current.has(s.id));
+    todo.forEach((s) => asked.current.add(s.id));
+    let next = 0;
+    async function worker() {
+      while (next < todo.length) {
+        const s = todo[next++];
+        try {
+          const o = await ai.overview(id, s.id);
+          const m = o.snapshot.metrics;
+          setInsights((p) => {
+            const next = {
+              ...p,
+              [s.id]: { level: o.snapshot.risk.level, score: o.snapshot.risk.score, reasons: o.snapshot.risk.reasons,
+                        pt: m.pt_average_pct, cgpa: m.cgpa },
+            };
+            try { sessionStorage.setItem(`risk:${id}`, JSON.stringify(next)); } catch { /* ignore */ }
+            return next;
+          });
+        } catch { /* leave the cells empty */ }
+      }
+    }
+    Array.from({ length: Math.min(4, todo.length) }, worker);
+  }, [batch, id]);
 
   // ── Student CRUD ─────────────────────────────────────────────────────────────
   async function handleStudentSave(data) {
@@ -48,6 +105,7 @@ export default function BatchDetailPage() {
       await students.add(id, data.register_number, data.name);
     } else {
       await students.update(id, studentModal.student.id, data);
+      asked.current.delete(studentModal.student.id);
     }
     await load();
     setStudentModal(null);
@@ -110,6 +168,26 @@ export default function BatchDetailPage() {
     }
   }
 
+  const sortedStudents = useMemo(
+    () => [...(batch?.students || [])].sort((a, b) => a.name.localeCompare(b.name)),
+    [batch]
+  );
+
+  const counts = useMemo(() => {
+    const c = { High: 0, Medium: 0, Low: 0 };
+    sortedStudents.forEach((s) => { const l = insights[s.id]?.level; if (l) c[l]++; });
+    return c;
+  }, [sortedStudents, insights]);
+  const assessed = counts.High + counts.Medium + counts.Low;
+  const allAssessed = sortedStudents.length > 0 && assessed === sortedStudents.length;
+
+  const visible = sortedStudents.filter((s) => {
+    const q = query.trim().toLowerCase();
+    const matchesQuery = !q || s.name.toLowerCase().includes(q) || s.register_number.toLowerCase().includes(q);
+    const matchesFilter = filter === "All" || insights[s.id]?.level === filter;
+    return matchesQuery && matchesFilter;
+  });
+
   // ── Render ───────────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -119,51 +197,37 @@ export default function BatchDetailPage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="alert alert-error" style={{ margin: 24 }}>{error}</div>
-    );
+  if (error && !batch) {
+    return <div className="alert alert-error" style={{ margin: 24 }}>{error}</div>;
   }
 
   if (!batch) return null;
 
-  const sortedStudents = [...(batch.students || [])].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  const base = `/dashboard/batches/${id}`;
 
   return (
     <>
-      {/* Page Header */}
-      <div className="page-header">
-        <div>
-          <div className="breadcrumb">
-            <Link href="/dashboard"><span>Dashboard</span></Link>
-            <span className="sep">›</span>
-            <span className="current">{batch.batch_year}</span>
-          </div>
+      <div className="breadcrumb">
+        <Link href="/dashboard"><span>Dashboard</span></Link>
+        <span className="sep">›</span>
+        <span className="current">{batch.batch_year}</span>
+      </div>
+
+      {/* Header */}
+      <section className="card bh-head">
+        <div className="bh-title">
           {!editingBatch ? (
             <>
-              <h1 style={{ marginBottom: 4 }}>{batch.batch_year}</h1>
-              <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-                Department of {batch.department}
-              </p>
+              <span className="bh-eyebrow">Batch</span>
+              <h1>{batch.batch_year}</h1>
+              <p>Department of {batch.department}</p>
             </>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-              <input
-                className="form-input"
-                value={batchForm.department}
-                onChange={(e) => setBatchForm((f) => ({ ...f, department: e.target.value }))}
-                placeholder="Department"
-                style={{ maxWidth: 360 }}
-              />
-              <input
-                className="form-input"
-                value={batchForm.batch_year}
-                onChange={(e) => setBatchForm((f) => ({ ...f, batch_year: e.target.value }))}
-                placeholder="Year (e.g. 2023-2027)"
-                style={{ maxWidth: 200 }}
-              />
+            <div className="bh-edit">
+              <input className="form-input" value={batchForm.department} placeholder="Department"
+                onChange={(e) => setBatchForm((f) => ({ ...f, department: e.target.value }))} />
+              <input className="form-input" value={batchForm.batch_year} placeholder="Year (e.g. 2023-2027)"
+                onChange={(e) => setBatchForm((f) => ({ ...f, batch_year: e.target.value }))} />
               <div style={{ display: "flex", gap: 8 }}>
                 <button className="btn btn-primary btn-sm" onClick={handleBatchSave} disabled={batchSaving}>
                   {batchSaving ? <span className="spinner" /> : "Save"}
@@ -174,54 +238,84 @@ export default function BatchDetailPage() {
           )}
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="btn btn-ghost btn-sm" style={{ color: "#a78bfa", borderColor: "rgba(124,58,237,0.3)" }}
-            onClick={() => router.push(`/dashboard/batches/${id}/meetings`)}>
-            <Calendar size={15} strokeWidth={1.8} /> Meetings
+        <div className="bh-actions">
+          <button className="btn btn-primary" onClick={() => setStudentModal({ mode: "add" })}>
+            <Plus size={16} strokeWidth={2} /> Add student
           </button>
-          <button className="btn btn-ghost btn-sm" style={{ color: "#fbbf24", borderColor: "rgba(251,191,36,0.3)" }}
-            onClick={() => router.push(`/dashboard/batches/${id}/exams`)}>
-            <BarChart2 size={15} strokeWidth={1.8} /> Exams
-          </button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setEditingBatch(!editingBatch)}>
-            <Pencil size={14} strokeWidth={1.8} /> Edit Batch
-          </button>
-          <button className="btn btn-danger btn-sm" onClick={() => setConfirmDelete({ type: "batch" })}>
-            <Trash2 size={14} strokeWidth={1.8} /> Delete
-          </button>
-          <button className="btn btn-ghost btn-sm" onClick={handleExportPdf} disabled={pdfLoading}
-            style={{ borderColor: "rgba(124,58,237,0.4)", color: "#a78bfa" }}>
+          <button className="btn btn-ghost" onClick={handleExportPdf} disabled={pdfLoading}>
             {pdfLoading ? <span className="spinner" /> : <><FileDown size={15} strokeWidth={1.8} /> Export PDF</>}
           </button>
-          <button className="btn btn-primary btn-sm" onClick={() => setStudentModal({ mode: "add" })}>
-            <Plus size={15} strokeWidth={2} /> Add Student
+          <button className="btn btn-ghost icon-btn" title="Edit batch" aria-label="Edit batch"
+            onClick={() => setEditingBatch(!editingBatch)}>
+            <Pencil size={15} strokeWidth={1.8} />
+          </button>
+          <button className="btn btn-danger icon-btn" title="Delete batch" aria-label="Delete batch"
+            onClick={() => setConfirmDelete({ type: "batch" })}>
+            <Trash2 size={15} strokeWidth={1.8} />
           </button>
         </div>
+      </section>
+
+      {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+
+      {/* Shortcuts */}
+      <div className="bh-tiles">
+        <Link href={`${base}/mentor-file`} className="card bh-tile">
+          <span className="bh-tile-icon green"><FolderOpen size={20} strokeWidth={1.8} /></span>
+          <span><strong>Mentor File</strong><small>11-item checklist and PDFs</small></span>
+          <ChevronRight size={17} strokeWidth={1.8} className="bh-tile-arrow" />
+        </Link>
+        <Link href={`${base}/meetings`} className="card bh-tile">
+          <span className="bh-tile-icon blue"><Calendar size={20} strokeWidth={1.8} /></span>
+          <span><strong>Meetings</strong><small>Circulars, minutes, attendance</small></span>
+          <ChevronRight size={17} strokeWidth={1.8} className="bh-tile-arrow" />
+        </Link>
+        <Link href={`${base}/exams`} className="card bh-tile">
+          <span className="bh-tile-icon amber"><BarChart2 size={20} strokeWidth={1.8} /></span>
+          <span><strong>Exams and analysis</strong><small>Marks, pass rates, remedial</small></span>
+          <ChevronRight size={17} strokeWidth={1.8} className="bh-tile-arrow" />
+        </Link>
       </div>
 
-      {/* Stats */}
-      <div className="stats-row">
-        <div className="card stat-card">
+      {/* Risk summary */}
+      <div className="bh-stats">
+        <div className="card bh-stat">
           <div className="stat-value">{sortedStudents.length}</div>
           <div className="stat-label">Students</div>
         </div>
-        <div className="card stat-card">
-          <div className="stat-value">{batch.batch_year}</div>
-          <div className="stat-label">Batch Year</div>
-        </div>
+        {LEVELS.map((l) => (
+          <button key={l} type="button" className={`card bh-stat risk-${l.toLowerCase()} ${filter === l ? "selected" : ""}`}
+            onClick={() => setFilter(filter === l ? "All" : l)}>
+            <div className="stat-value">{allAssessed ? counts[l] : "–"}</div>
+            <div className="stat-label">{l} risk</div>
+          </button>
+        ))}
       </div>
 
-      {/* Students Table */}
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{
-          padding: "20px 24px",
-          borderBottom: "1px solid var(--glass-border)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center"
-        }}>
-          <h3>Students</h3>
-          <span className="badge badge-purple">{sortedStudents.length} total</span>
+      {/* Students */}
+      <div className="card bh-students">
+        <div className="bh-toolbar">
+          <div>
+            <h3>Students</h3>
+            <span className="bh-sub">
+              {allAssessed || sortedStudents.length === 0
+                ? "Risk is calculated from marks, arrears, attendance and counseling records."
+                : `Updating risk levels… ${assessed} of ${sortedStudents.length}`}
+            </span>
+          </div>
+          <div className="bh-search">
+            <Search size={15} strokeWidth={1.8} />
+            <input placeholder="Search name or register number" value={query}
+              onChange={(e) => setQuery(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="bh-filters">
+          {["All", ...LEVELS].map((f) => (
+            <button key={f} type="button" className={`chip ${filter === f ? "on" : ""}`} onClick={() => setFilter(f)}>
+              {f === "All" ? `All (${sortedStudents.length})` : `${f} (${allAssessed ? counts[f] : "–"})`}
+            </button>
+          ))}
         </div>
 
         {sortedStudents.length === 0 ? (
@@ -233,60 +327,76 @@ export default function BatchDetailPage() {
               <Plus size={15} /> Add First Student
             </button>
           </div>
+        ) : visible.length === 0 ? (
+          <div className="empty-state"><p>No students match your search or filter.</p></div>
         ) : (
           <div className="table-wrapper" style={{ border: "none", borderRadius: 0 }}>
-            <table>
+            <table className="bh-table">
               <thead>
                 <tr>
-                  <th style={{ width: 60 }}>S.NO</th>
-                  <th>Register Number</th>
-                  <th>Name of the Student</th>
-                  <th style={{ width: 100, textAlign: "right" }}>Actions</th>
+                  <th style={{ width: 52 }}>S.NO</th>
+                  <th>Student</th>
+                  <th>Risk</th>
+                  <th>Latest test</th>
+                  <th>CGPA</th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {sortedStudents.map((student, idx) => (
-                  <tr key={student.id}>
-                    <td style={{ color: "var(--text-muted)", textAlign: "center" }}>
-                      {idx + 1}
-                    </td>
-                    <td>
-                      <span className="badge badge-purple">{student.register_number}</span>
-                    </td>
-                    <td style={{ color: "var(--text-primary)", fontWeight: 500 }}>
-                      {student.name}
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                        <button className="btn btn-ghost btn-sm"
-                          style={{ color: "#a78bfa", borderColor: "rgba(124,58,237,0.3)" }}
-                          onClick={() => router.push(`/dashboard/batches/${id}/students/${student.id}/counseling`)}>
-                          <ClipboardList size={14} strokeWidth={1.8} /> Counseling
-                        </button>
-                        <button className="btn btn-ghost btn-sm"
-                          style={{ color: "#6ee7b7", borderColor: "rgba(16,185,129,0.3)" }}
-                          onClick={() => router.push(`/dashboard/batches/${id}/students/${student.id}/ai`)}>
-                          <Bot size={14} strokeWidth={1.8} /> AI
-                        </button>
-                        <button className="btn btn-ghost btn-sm"
-                          onClick={() => setStudentModal({ mode: "edit", student })}>
-                          <Pencil size={14} strokeWidth={1.8} />
-                        </button>
-                        <button className="btn btn-danger btn-sm"
-                          onClick={() => setConfirmDelete({ type: "student", id: student.id })}>
-                          <Trash2 size={14} strokeWidth={1.8} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {visible.map((student) => {
+                  const ins = insights[student.id];
+                  const n = sortedStudents.indexOf(student) + 1;
+                  return (
+                    <tr key={student.id}>
+                      <td className="muted center">{n}</td>
+                      <td>
+                        <div className="bh-student">
+                          <span className="bh-avatar">{initials(student.name)}</span>
+                          <span>
+                            <strong>{student.name}</strong>
+                            <small>{student.register_number}</small>
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        {ins ? (
+                          <span className={`risk-pill ${ins.level.toLowerCase()}`}
+                            title={ins.reasons.join("\n")}>
+                            <span className="dot" />{ins.level}
+                          </span>
+                        ) : <span className="skeleton" />}
+                      </td>
+                      <td className="num">{ins ? (ins.pt != null ? `${ins.pt}%` : "–") : <span className="skeleton short" />}</td>
+                      <td className="num">{ins ? (ins.cgpa || "–") : <span className="skeleton short" />}</td>
+                      <td>
+                        <div className="bh-row-actions">
+                          <button className="btn btn-ghost btn-sm"
+                            onClick={() => router.push(`${base}/students/${student.id}/counseling`)}>
+                            <ClipboardList size={14} strokeWidth={1.8} /> Counseling
+                          </button>
+                          <button className="btn btn-ghost btn-sm bh-ai"
+                            onClick={() => router.push(`${base}/students/${student.id}/ai`)}>
+                            <Bot size={14} strokeWidth={1.8} /> AI
+                          </button>
+                          <button className="btn btn-ghost btn-sm icon-btn" title="Edit student" aria-label="Edit student"
+                            onClick={() => setStudentModal({ mode: "edit", student })}>
+                            <Pencil size={14} strokeWidth={1.8} />
+                          </button>
+                          <button className="btn btn-danger btn-sm icon-btn" title="Remove student" aria-label="Remove student"
+                            onClick={() => setConfirmDelete({ type: "student", id: student.id })}>
+                            <Trash2 size={14} strokeWidth={1.8} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* Student Add/Edit Modal */}
       {studentModal && (
         <StudentModal
           mode={studentModal.mode}
@@ -296,7 +406,6 @@ export default function BatchDetailPage() {
         />
       )}
 
-      {/* Confirm Delete Modal */}
       {confirmDelete && (
         <ConfirmModal
           title={confirmDelete.type === "batch" ? "Delete Batch?" : "Remove Student?"}

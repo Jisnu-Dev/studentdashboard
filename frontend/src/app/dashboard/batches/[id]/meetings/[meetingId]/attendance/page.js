@@ -196,9 +196,9 @@ export default function AttendancePage() {
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button className="btn btn-ghost btn-sm"
-            style={{ color: "#6ee7b7", borderColor: "rgba(16,185,129,0.3)" }}
+            style={{ color: "var(--success)", borderColor: "var(--success-border)" }}
             onClick={downloadMinutes} disabled={pdfLoading}>
-            {pdfLoading ? <span className="spinner" /> : "📄 Minutes PDF"}
+            {pdfLoading ? <span className="spinner" /> : "Minutes PDF"}
           </button>
           <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? <span className="spinner" /> : "Save Attendance"}
@@ -216,11 +216,11 @@ export default function AttendancePage() {
           <div className="stat-label">Total Students</div>
         </div>
         <div className="card stat-card">
-          <div className="stat-value" style={{ color: "#6ee7b7" }}>{presentCount}</div>
+          <div className="stat-value" style={{ color: "var(--success)" }}>{presentCount}</div>
           <div className="stat-label">Present</div>
         </div>
         <div className="card stat-card">
-          <div className="stat-value" style={{ color: "#f87171" }}>{studentList.length - presentCount}</div>
+          <div className="stat-value" style={{ color: "var(--danger)" }}>{studentList.length - presentCount}</div>
           <div className="stat-label">Absent</div>
         </div>
       </div>
@@ -234,7 +234,7 @@ export default function AttendancePage() {
             <div key={student.id} className="card"
               style={{
                 padding: 0, overflow: "hidden",
-                border: rec.is_present ? "1px solid rgba(16,185,129,0.3)" : "1px solid var(--glass-border)"
+                border: rec.is_present ? "1px solid var(--success-border)" : "1px solid var(--glass-border)"
               }}>
               {/* Header row */}
               <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px" }}>
@@ -246,12 +246,12 @@ export default function AttendancePage() {
                     onClick={() => togglePresent(student.id)}
                     style={{
                       width: 22, height: 22, borderRadius: 4, border: "2px solid",
-                      borderColor: rec.is_present ? "#6ee7b7" : "var(--text-muted)",
-                      background: rec.is_present ? "rgba(16,185,129,0.2)" : "transparent",
+                      borderColor: rec.is_present ? "var(--success)" : "var(--text-muted)",
+                      background: rec.is_present ? "var(--success-bg)" : "transparent",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       cursor: "pointer", transition: "all 0.15s", flexShrink: 0,
                     }}>
-                    {rec.is_present && <span style={{ color: "#6ee7b7", fontSize: 14, lineHeight: 1 }}>✓</span>}
+                    {rec.is_present && <span style={{ color: "var(--success)", fontSize: 14, lineHeight: 1 }}>✓</span>}
                   </div>
                 </label>
 
@@ -280,7 +280,7 @@ export default function AttendancePage() {
                 <div style={{
                   borderTop: "1px solid var(--glass-border)",
                   padding: "20px 20px 20px 58px",
-                  background: "rgba(0,0,0,0.15)",
+                  background: "var(--surface-muted)",
                   display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24,
                 }}>
                   {/* Points Discussed */}
@@ -292,7 +292,7 @@ export default function AttendancePage() {
                           style={{ fontSize: "0.68rem", padding: "2px 8px" }}
                           onClick={() => applyDefaults(student.id)}
                           title="Fill with default points">
-                          ⚡ Defaults
+                          Defaults
                         </button>
                         <button type="button" className="btn btn-ghost btn-sm"
                           style={{ fontSize: "0.68rem", padding: "2px 8px" }}
@@ -316,12 +316,12 @@ export default function AttendancePage() {
                           />
                           <button type="button" className="btn btn-danger btn-sm"
                             style={{ marginTop: 4, padding: "4px 8px" }}
-                            onClick={() => removeItem(student.id, "points_discussed", pi)}>✕</button>
+                            onClick={() => removeItem(student.id, "points_discussed", pi)}>×</button>
                         </div>
                       ))}
                       {rec.points_discussed.length === 0 && (
                         <p style={{ color: "var(--text-muted)", fontSize: "0.8rem", fontStyle: "italic" }}>
-                          No points yet. Click + Add or ⚡ Defaults.
+                          No points yet. Click + Add or Defaults.
                         </p>
                       )}
                     </div>
@@ -352,7 +352,7 @@ export default function AttendancePage() {
                           />
                           <button type="button" className="btn btn-danger btn-sm"
                             style={{ marginTop: 4, padding: "4px 8px" }}
-                            onClick={() => removeItem(student.id, "action_planned", ai)}>✕</button>
+                            onClick={() => removeItem(student.id, "action_planned", ai)}>×</button>
                         </div>
                       ))}
                       {rec.action_planned.length === 0 && (

@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/api";
 import { saveToken } from "@/lib/auth";
+import AuthShell from "@/components/AuthShell";
+import { AuthField, PasswordField } from "@/components/AuthFields";
+import { Mail, Lock, ArrowRight, AlertCircle } from "@/lib/icons";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,57 +31,44 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="auth-page">
-      <div className="card auth-card">
-        <div className="auth-logo">
-          <div className="auth-logo-icon">🎓</div>
-          <h1>MentorBoard</h1>
-          <p>Sign in to your mentor portal</p>
-        </div>
-
-        <form className="auth-form" onSubmit={handleSubmit}>
-          {error && <div className="alert alert-error">{error}</div>}
-
-          <div className="form-group">
-            <label className="form-label">Email address</label>
-            <input
-              className="form-input"
-              type="email"
-              placeholder="you@bitsathy.ac.in"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoFocus
-            />
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in to continue to your mentor dashboard."
+      footer={<>New to MentorBoard? <Link href="/register">Create an account</Link></>}
+    >
+      <form className="auth-form" onSubmit={handleSubmit}>
+        {error && (
+          <div className="alert alert-error auth-alert">
+            <AlertCircle size={16} strokeWidth={1.8} /> {error}
           </div>
+        )}
 
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input
-              className="form-input"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+        <AuthField
+          label="Email address"
+          Icon={Mail}
+          type="email"
+          placeholder="you@bitsathy.ac.in"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+          required
+          autoFocus
+        />
 
-          <button
-            className="btn btn-primary btn-lg"
-            type="submit"
-            disabled={loading}
-            style={{ width: "100%", justifyContent: "center" }}
-          >
-            {loading ? <span className="spinner" /> : "Sign In"}
-          </button>
+        <PasswordField
+          label="Password"
+          Icon={Lock}
+          placeholder="Enter your password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+          required
+        />
 
-          <p className="auth-divider">
-            Don&apos;t have an account?{" "}
-            <Link href="/register">Create one</Link>
-          </p>
-        </form>
-      </div>
-    </div>
+        <button className="btn btn-primary btn-lg auth-submit" type="submit" disabled={loading}>
+          {loading ? <span className="spinner" /> : <>Sign in <ArrowRight size={17} strokeWidth={2} /></>}
+        </button>
+      </form>
+    </AuthShell>
   );
 }

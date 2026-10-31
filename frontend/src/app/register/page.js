@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/api";
 import { saveToken } from "@/lib/auth";
+import AuthShell from "@/components/AuthShell";
+import { AuthField, PasswordField, PasswordStrength } from "@/components/AuthFields";
+import { User, Mail, Lock, ArrowRight, AlertCircle } from "@/lib/icons";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -31,70 +34,57 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="auth-page">
-      <div className="card auth-card">
-        <div className="auth-logo">
-          <div className="auth-logo-icon">🎓</div>
-          <h1>Create Account</h1>
-          <p>Join the mentor portal</p>
-        </div>
-
-        <form className="auth-form" onSubmit={handleSubmit}>
-          {error && <div className="alert alert-error">{error}</div>}
-
-          <div className="form-group">
-            <label className="form-label">Full Name</label>
-            <input
-              className="form-input"
-              type="text"
-              placeholder="Dr. A. Rajkumar"
-              value={form.name}
-              onChange={set("name")}
-              required
-              autoFocus
-            />
+    <AuthShell
+      title="Create your account"
+      subtitle="Set up your mentor profile to start managing your batches."
+      footer={<>Already have an account? <Link href="/login">Sign in</Link></>}
+    >
+      <form className="auth-form" onSubmit={handleSubmit}>
+        {error && (
+          <div className="alert alert-error auth-alert">
+            <AlertCircle size={16} strokeWidth={1.8} /> {error}
           </div>
+        )}
 
-          <div className="form-group">
-            <label className="form-label">Email address</label>
-            <input
-              className="form-input"
-              type="email"
-              placeholder="you@bitsathy.ac.in"
-              value={form.email}
-              onChange={set("email")}
-              required
-            />
-          </div>
+        <AuthField
+          label="Full name"
+          Icon={User}
+          type="text"
+          placeholder="Dr. A. Rajkumar"
+          value={form.name}
+          onChange={set("name")}
+          autoComplete="name"
+          required
+          autoFocus
+        />
 
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input
-              className="form-input"
-              type="password"
-              placeholder="Min 8 characters"
-              value={form.password}
-              onChange={set("password")}
-              required
-              minLength={8}
-            />
-          </div>
+        <AuthField
+          label="Email address"
+          Icon={Mail}
+          type="email"
+          placeholder="you@bitsathy.ac.in"
+          value={form.email}
+          onChange={set("email")}
+          autoComplete="email"
+          required
+        />
 
-          <button
-            className="btn btn-primary btn-lg"
-            type="submit"
-            disabled={loading}
-            style={{ width: "100%", justifyContent: "center" }}
-          >
-            {loading ? <span className="spinner" /> : "Create Account"}
-          </button>
+        <PasswordField
+          label="Password"
+          Icon={Lock}
+          placeholder="Create a password"
+          value={form.password}
+          onChange={set("password")}
+          autoComplete="new-password"
+          required
+          minLength={8}
+          hint={<PasswordStrength value={form.password} />}
+        />
 
-          <p className="auth-divider">
-            Already have an account?{" "}
-            <Link href="/login">Sign in</Link>
-          </p>
-        </form>
-      </div>
-    </div>
+        <button className="btn btn-primary btn-lg auth-submit" type="submit" disabled={loading}>
+          {loading ? <span className="spinner" /> : <>Create account <ArrowRight size={17} strokeWidth={2} /></>}
+        </button>
+      </form>
+    </AuthShell>
   );
 }

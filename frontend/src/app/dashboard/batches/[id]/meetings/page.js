@@ -114,7 +114,6 @@ export default function MeetingsListPage() {
 
       {meetingList.length === 0 ? (
         <div className="card empty-state">
-          <div className="empty-icon">📅</div>
           <h3>No meetings scheduled</h3>
           <p style={{ marginBottom: 24 }}>Schedule the first mentor-mentee meeting for this batch.</p>
           <Link href={`/dashboard/batches/${batchId}/meetings/new`} className="btn btn-primary">
@@ -133,7 +132,7 @@ export default function MeetingsListPage() {
                     </span>
                     <span className="badge badge-purple">{m.meeting_date}</span>
                     {m.minutes_text && (
-                      <span style={{ fontSize: "0.7rem", background: "rgba(16,185,129,0.15)", color: "#6ee7b7", border: "1px solid rgba(16,185,129,0.3)", padding: "2px 8px", borderRadius: 999, fontWeight: 600 }}>
+                      <span style={{ fontSize: "0.7rem", background: "var(--success-bg)", color: "var(--success)", border: "1px solid var(--success-border)", padding: "2px 8px", borderRadius: 999, fontWeight: 600 }}>
                         ✓ Minutes recorded
                       </span>
                     )}
@@ -148,27 +147,27 @@ export default function MeetingsListPage() {
                 <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
                   <button
                     className="btn btn-ghost btn-sm"
-                    style={{ color: "#a78bfa", borderColor: "rgba(124,58,237,0.3)" }}
+                    style={{ color: "var(--accent)", borderColor: "var(--accent-border)" }}
                     onClick={() => downloadPdf(m, "circular")}
                     disabled={pdfLoading === `${m.id}-circular`}
                   >
-                    {pdfLoading === `${m.id}-circular` ? <span className="spinner" /> : "📄 Circular"}
+                    {pdfLoading === `${m.id}-circular` ? <span className="spinner" /> : "Circular"}
                   </button>
                   <button
                     className="btn btn-ghost btn-sm"
-                    style={{ color: m.minutes_text ? "#6ee7b7" : "var(--text-muted)", borderColor: m.minutes_text ? "rgba(16,185,129,0.3)" : "var(--glass-border)" }}
+                    style={{ color: m.minutes_text ? "var(--success)" : "var(--text-muted)", borderColor: m.minutes_text ? "var(--success-border)" : "var(--glass-border)" }}
                     onClick={() => m.minutes_text ? downloadPdf(m, "minutes") : router.push(`/dashboard/batches/${batchId}/meetings/${m.id}`)}
                     disabled={pdfLoading === `${m.id}-minutes`}
                   >
-                    {pdfLoading === `${m.id}-minutes` ? <span className="spinner" /> : m.minutes_text ? "📄 Minutes" : "✍ Add Minutes"}
+                    {pdfLoading === `${m.id}-minutes` ? <span className="spinner" /> : m.minutes_text ? "Minutes" : "Add Minutes"}
                   </button>
                   <button className="btn btn-ghost btn-sm"
                     onClick={() => router.push(`/dashboard/batches/${batchId}/meetings/${m.id}`)}>
-                    ✏️
+                    Edit
                   </button>
                   <button className="btn btn-danger btn-sm"
                     onClick={() => setConfirmDelete(m.id)}>
-                    🗑
+                    Delete
                   </button>
                 </div>
               </div>

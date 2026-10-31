@@ -66,7 +66,7 @@ export default function NewBatchPage() {
             >
               <option value="" disabled>Select department…</option>
               {DEPARTMENTS.map((d) => (
-                <option key={d} value={d} style={{ background: "#13133a" }}>{d}</option>
+                <option key={d} value={d} style={{ background: "var(--bg-surface)" }}>{d}</option>
               ))}
             </select>
           </div>

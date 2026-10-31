@@ -138,7 +138,7 @@ export default function NewMeetingPage() {
                 <select className="form-input" value={form.year_of_study} onChange={setE("year_of_study")}
                   style={{ cursor: "pointer" }}>
                   {["I Year","II Year","III Year","IV Year"].map(y => (
-                    <option key={y} value={y} style={{ background: "#13133a" }}>{y}</option>
+                    <option key={y} value={y} style={{ background: "var(--bg-surface)" }}>{y}</option>
                   ))}
                 </select>
               </div>
@@ -149,7 +149,7 @@ export default function NewMeetingPage() {
               <select className="form-input" value={form.semester}
                 onChange={setE("semester")} style={{ cursor: "pointer" }}>
                 {SEMESTERS.map((s) => (
-                  <option key={s} value={s} style={{ background: "#13133a" }}>{s}</option>
+                  <option key={s} value={s} style={{ background: "var(--bg-surface)" }}>{s}</option>
                 ))}
               </select>
             </div>
@@ -181,7 +181,7 @@ export default function NewMeetingPage() {
                 {form.agenda_items.length > 1 && (
                   <button type="button" className="btn btn-danger btn-sm"
                     onClick={() => removeAgendaItem(idx)} style={{ flexShrink: 0 }}>
-                    ✕
+                    ×
                   </button>
                 )}
               </div>

@@ -138,7 +138,7 @@ export default function NewCounselingPage() {
                   <input type="radio" name="reason_initiated_by" value={opt}
                     checked={form.reason_initiated_by === opt}
                     onChange={setE("reason_initiated_by")}
-                    style={{ accentColor: "#7c3aed" }} />
+                    style={{ accentColor: "var(--accent)" }} />
                   {opt}
                 </label>
               ))}
@@ -240,7 +240,7 @@ function RadioGroup({ label, options, value, onChange, otherValue, onOtherChange
           <div key={opt}>
             <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
               <input type="radio" name={label} value={opt} checked={value === opt}
-                onChange={() => onChange(opt)} style={{ accentColor: "#7c3aed" }} />
+                onChange={() => onChange(opt)} style={{ accentColor: "var(--accent)" }} />
               {opt}
             </label>
             {opt === "Other" && value === "Other" && (
@@ -267,9 +267,9 @@ function YesNoField({ label, value, onChange, explanation, onExplanation, yesLab
         <span style={{ fontSize: "0.875rem", color: "var(--text-secondary)", flex: 1 }}>{label}</span>
         <div style={{ display: "flex", gap: 16 }}>
           {[{ v: true, l: yesLabel }, { v: false, l: noLabel }].map(({ v, l }) => (
-            <label key={l} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: value === v ? "#a78bfa" : "var(--text-secondary)", fontSize: "0.875rem", fontWeight: value === v ? 600 : 400 }}>
+            <label key={l} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: value === v ? "var(--accent)" : "var(--text-secondary)", fontSize: "0.875rem", fontWeight: value === v ? 600 : 400 }}>
               <input type="radio" name={label} checked={value === v}
-                onChange={() => onChange(v)} style={{ accentColor: "#7c3aed" }} />
+                onChange={() => onChange(v)} style={{ accentColor: "var(--accent)" }} />
               {l}
             </label>
           ))}

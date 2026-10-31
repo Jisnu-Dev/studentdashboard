@@ -18,6 +18,9 @@ async def lifespan(app: FastAPI):
         migrations = [
             "ALTER TABLE IF EXISTS mentor_meetings ADD COLUMN IF NOT EXISTS academic_year VARCHAR(20)",
             "ALTER TABLE IF EXISTS mentor_meetings ADD COLUMN IF NOT EXISTS year_of_study VARCHAR(20)",
+            "ALTER TABLE IF EXISTS exam_setups ADD COLUMN IF NOT EXISTS subject_details JSONB NOT NULL DEFAULT '{}'::jsonb",
+            "ALTER TABLE IF EXISTS exam_setups ADD COLUMN IF NOT EXISTS pt_pass_mark INTEGER NOT NULL DEFAULT 50",
+            "ALTER TABLE IF EXISTS exam_setups ADD COLUMN IF NOT EXISTS pt_max_marks INTEGER NOT NULL DEFAULT 100",
         ]
         for sql in migrations:
             await conn.execute(text(sql))

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { exams, batches } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import ConfirmModal from "@/components/ConfirmModal";
-import { BarChart2, Plus, Pencil, Trash2, FileDown, BookOpen } from "@/lib/icons";
+import { BarChart2, Plus, Pencil, Trash2, FileDown, BookOpen, TrendingUp } from "@/lib/icons";
 
 export default function ExamsListPage() {
   const { id: batchId } = useParams();
@@ -110,15 +110,16 @@ export default function ExamsListPage() {
                   <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
                     <span style={{ fontWeight: 800, color: "var(--text-primary)" }}>{exam.semester}</span>
                     <span className="badge badge-purple">{exam.academic_year}</span>
-                    <span style={{ fontSize: "0.72rem", background: "rgba(251,191,36,0.15)", color: "#fbbf24",
-                      border: "1px solid rgba(251,191,36,0.3)", padding: "2px 8px", borderRadius: 999, fontWeight: 600 }}>
+                    <span style={{ fontSize: "0.72rem", background: "var(--warning-bg)", color: "var(--warning)",
+                      border: "1px solid var(--warning-border)", padding: "2px 8px", borderRadius: 999, fontWeight: 600 }}>
                       {exam.subject_codes?.length || 0} subjects
                     </span>
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>PT out of {exam.pt_max_marks}</span>
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {(exam.subject_codes || []).map(code => (
-                      <span key={code} style={{ fontSize: "0.75rem", background: "rgba(124,58,237,0.15)",
-                        color: "#c4b5fd", border: "1px solid rgba(124,58,237,0.3)", padding: "2px 8px", borderRadius: 6 }}>
+                      <span key={code} style={{ fontSize: "0.75rem", background: "var(--accent-bg)",
+                        color: "var(--accent)", border: "1px solid var(--accent-border)", padding: "2px 8px", borderRadius: 6 }}>
                         {code}
                       </span>
                     ))}
@@ -126,21 +127,25 @@ export default function ExamsListPage() {
                 </div>
                 <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
                   <button className="btn btn-ghost btn-sm"
-                    style={{ color: "#a78bfa", borderColor: "rgba(124,58,237,0.3)" }}
+                    style={{ color: "var(--accent)", borderColor: "var(--accent-border)" }}
                     onClick={() => router.push(`/dashboard/batches/${batchId}/exams/${exam.id}`)}
                   ><Pencil size={14} strokeWidth={1.8} /> Enter Marks</button>
                   <button className="btn btn-ghost btn-sm"
-                    style={{ color: "#fbbf24", borderColor: "rgba(251,191,36,0.3)" }}
+                    style={{ color: "var(--success)", borderColor: "var(--success-border)" }}
+                    onClick={() => router.push(`/dashboard/batches/${batchId}/exams/${exam.id}/analysis`)}
+                  ><TrendingUp size={14} strokeWidth={1.8} /> Analysis</button>
+                  <button className="btn btn-ghost btn-sm"
+                    style={{ color: "var(--warning)", borderColor: "var(--warning-border)" }}
                     onClick={() => downloadPdf(exam, "pt1")} disabled={pdfLoading === `${exam.id}-pt1`}>
                     {pdfLoading === `${exam.id}-pt1` ? <span className="spinner" /> : <><FileDown size={14} strokeWidth={1.8} /> PT1</>}
                   </button>
                   <button className="btn btn-ghost btn-sm"
-                    style={{ color: "#a78bfa", borderColor: "rgba(124,58,237,0.3)" }}
+                    style={{ color: "var(--accent)", borderColor: "var(--accent-border)" }}
                     onClick={() => downloadPdf(exam, "pt2")} disabled={pdfLoading === `${exam.id}-pt2`}>
                     {pdfLoading === `${exam.id}-pt2` ? <span className="spinner" /> : <><FileDown size={14} strokeWidth={1.8} /> PT2</>}
                   </button>
                   <button className="btn btn-ghost btn-sm"
-                    style={{ color: "#6ee7b7", borderColor: "rgba(16,185,129,0.3)" }}
+                    style={{ color: "var(--success)", borderColor: "var(--success-border)" }}
                     onClick={() => downloadPdf(exam, "semester")} disabled={pdfLoading === `${exam.id}-semester`}>
                     {pdfLoading === `${exam.id}-semester` ? <span className="spinner" /> : <><FileDown size={14} strokeWidth={1.8} /> Sem</>}
                   </button>

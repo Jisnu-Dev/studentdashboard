@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { exams, batches, students as studentsApi } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+import MaxMarksField from "@/components/MaxMarksField";
 import { FileDown, BookOpen, GraduationCap, Pencil, Plus, X, RotateCcw } from "@/lib/icons";
 
 const SEMESTERS = [
@@ -16,9 +17,9 @@ const SEMESTERS = [
 const GRADES = ["", "O", "A+", "A", "B+", "B", "C", "U", "W", "AB"];
 
 const TABS = [
-  { key: "pt1",      label: "PT1 Marks",       Icon: BookOpen,      color: "#fbbf24", mark_key: "pt1" },
-  { key: "pt2",      label: "PT2 Marks",       Icon: BookOpen,      color: "#a78bfa", mark_key: "pt2" },
-  { key: "semester", label: "Semester Grades", Icon: GraduationCap, color: "#6ee7b7", mark_key: "sem" },
+  { key: "pt1",      label: "PT1 Marks",       Icon: BookOpen,      color: "var(--warning)", mark_key: "pt1" },
+  { key: "pt2",      label: "PT2 Marks",       Icon: BookOpen,      color: "var(--accent)", mark_key: "pt2" },
+  { key: "semester", label: "Semester Grades", Icon: GraduationCap, color: "var(--success)", mark_key: "sem" },
 ];
 
 export default function ExamMarksPage() {
@@ -36,7 +37,7 @@ export default function ExamMarksPage() {
   const [success, setSuccess] = useState("");
   const [tab, setTab] = useState("pt1");
   const [editingSetup, setEditingSetup] = useState(false);
-  const [setupForm, setSetupForm] = useState({ semester: "", academic_year: "", subject_codes: [] });
+  const [setupForm, setSetupForm] = useState({ semester: "", academic_year: "", subject_codes: [], pt_max_marks: "100" });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,7 +50,10 @@ export default function ExamMarksPage() {
       ]);
       setBatch(b);
       setSetup(s);
-      setSetupForm({ semester: s.semester, academic_year: s.academic_year, subject_codes: [...s.subject_codes] });
+      setSetupForm({
+        semester: s.semester, academic_year: s.academic_year,
+        subject_codes: [...s.subject_codes], pt_max_marks: String(s.pt_max_marks),
+      });
       setStudentList(studs);
 
       const map = {};
@@ -70,6 +74,12 @@ export default function ExamMarksPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // A typed number outside 0..max is flagged; text such as AB (absent) is allowed
+  function outOfRange(value) {
+    const v = String(value ?? "").trim();
+    return v !== "" && !Number.isNaN(Number(v)) && (Number(v) < 0 || Number(v) > (setup?.pt_max_marks ?? 100));
+  }
+
   function setMark(studentId, type, code, value) {
     setMarks(m => ({
       ...m,
@@ -80,6 +90,12 @@ export default function ExamMarksPage() {
   async function handleSave() {
     setSaving(true); setError(""); setSuccess("");
     try {
+      for (const st of studentList) {
+        for (const [test, key] of [["PT1", "pt1"], ["PT2", "pt2"]]) {
+          const bad = Object.entries(marks[st.id]?.[key] || {}).find(([, v]) => outOfRange(v));
+          if (bad) throw new Error(`${test} mark ${bad[1]} for ${bad[0]} (${st.name}) must be between 0 and ${setup.pt_max_marks}`);
+        }
+      }
       const records = studentList.map(st => ({
         student_id: st.id,
         pt1_marks: marks[st.id]?.pt1 || {},
@@ -94,10 +110,12 @@ export default function ExamMarksPage() {
   }
 
   async function handleSaveSetup() {
+    setError("");
     try {
       const updated = await exams.update(batchId, examId, {
         ...setupForm,
         subject_codes: setupForm.subject_codes.filter(c => c.trim()),
+        pt_max_marks: Number(setupForm.pt_max_marks),
       });
       setSetup(updated);
       setEditingSetup(false);
@@ -136,6 +154,7 @@ export default function ExamMarksPage() {
   if (!setup) return null;
 
   const subjects = setup.subject_codes || [];
+  const maxMarks = setup.pt_max_marks;
   const activeTab = TABS.find(t => t.key === tab);
 
   return (
@@ -153,22 +172,22 @@ export default function ExamMarksPage() {
           </div>
           <h1>Exam <span className="gradient-text">Marks</span></h1>
           <p style={{ color: "var(--text-secondary)", marginTop: 4 }}>
-            {setup.semester} · {setup.academic_year} · {subjects.length} subjects
+            {setup.semester} · {setup.academic_year} · {subjects.length} subjects · PT marks out of {maxMarks}
           </p>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="btn btn-ghost btn-sm"
-            style={{ color: "#fbbf24", borderColor: "rgba(251,191,36,0.3)" }}
+            style={{ color: "var(--warning)", borderColor: "var(--warning-border)" }}
             onClick={() => downloadPdf("pt1")} disabled={pdfLoading === "pt1"}>
             {pdfLoading === "pt1" ? <span className="spinner" /> : <><FileDown size={15} strokeWidth={1.8} /> PT1</>}
           </button>
           <button className="btn btn-ghost btn-sm"
-            style={{ color: "#a78bfa", borderColor: "rgba(124,58,237,0.3)" }}
+            style={{ color: "var(--accent)", borderColor: "var(--accent-border)" }}
             onClick={() => downloadPdf("pt2")} disabled={pdfLoading === "pt2"}>
             {pdfLoading === "pt2" ? <span className="spinner" /> : <><FileDown size={15} strokeWidth={1.8} /> PT2</>}
           </button>
           <button className="btn btn-ghost btn-sm"
-            style={{ color: "#6ee7b7", borderColor: "rgba(16,185,129,0.3)" }}
+            style={{ color: "var(--success)", borderColor: "var(--success-border)" }}
             onClick={() => downloadPdf("semester")} disabled={pdfLoading === "semester"}>
             {pdfLoading === "semester" ? <span className="spinner" /> : <><FileDown size={15} strokeWidth={1.8} /> Semester</>}
           </button>
@@ -190,12 +209,16 @@ export default function ExamMarksPage() {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {subjects.map(code => (
                   <span key={code} style={{
-                    fontSize: "0.8rem", background: "rgba(124,58,237,0.15)",
-                    color: "#c4b5fd", border: "1px solid rgba(124,58,237,0.3)",
+                    fontSize: "0.8rem", background: "var(--accent-bg)",
+                    color: "var(--accent)", border: "1px solid var(--accent-border)",
                     padding: "3px 10px", borderRadius: 6, fontFamily: "monospace",
                   }}>{code}</span>
                 ))}
               </div>
+            </div>
+            <div>
+              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: 8 }}>Maximum Marks (PT I / PT II)</div>
+              <span className="badge badge-purple">Out of {maxMarks}</span>
             </div>
             <button className="btn btn-ghost btn-sm" onClick={() => setEditingSetup(true)}><Pencil size={14} strokeWidth={1.8} /> Edit Setup</button>
           </div>
@@ -212,9 +235,13 @@ export default function ExamMarksPage() {
                 <label className="form-label">Semester</label>
                 <select className="form-input" value={setupForm.semester}
                   onChange={e => setSetupForm(f => ({ ...f, semester: e.target.value }))} style={{ cursor: "pointer" }}>
-                  {SEMESTERS.map(s => <option key={s} value={s} style={{ background: "#13133a" }}>{s}</option>)}
+                  {SEMESTERS.map(s => <option key={s} value={s} style={{ background: "var(--bg-surface)" }}>{s}</option>)}
                 </select>
               </div>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <MaxMarksField value={setupForm.pt_max_marks}
+                onChange={v => setSetupForm(f => ({ ...f, pt_max_marks: v }))} />
             </div>
             <div className="form-group" style={{ marginBottom: 12 }}>
               <label className="form-label">Subject Codes</label>
@@ -251,9 +278,9 @@ export default function ExamMarksPage() {
             style={{
               padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer",
               fontWeight: tab === t.key ? 700 : 500, fontSize: "0.85rem", transition: "all 0.2s",
-              background: tab === t.key ? `linear-gradient(135deg, ${t.color}33, ${t.color}22)` : "transparent",
+              background: tab === t.key ? "var(--bg-surface)" : "transparent",
               color: tab === t.key ? t.color : "var(--text-secondary)",
-              boxShadow: tab === t.key ? `0 0 0 1px ${t.color}55` : "none",
+              boxShadow: tab === t.key ? "var(--shadow-sm)" : "none",
               display: "flex", alignItems: "center", gap: 6,
             }}>
             <t.Icon size={14} strokeWidth={1.8} />
@@ -266,7 +293,7 @@ export default function ExamMarksPage() {
       <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid var(--glass-border)" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 500 }}>
           <thead>
-            <tr style={{ background: `${activeTab?.color}18` }}>
+            <tr style={{ background: "var(--surface-muted)" }}>
               <th style={TH}>S.No</th>
               <th style={TH}>Register No.</th>
               <th style={{ ...TH, textAlign: "left", minWidth: 160 }}>Student Name</th>
@@ -280,7 +307,7 @@ export default function ExamMarksPage() {
               const rec = marks[student.id] || { pt1: {}, pt2: {}, sem: {} };
               const mk = rec[activeTab?.mark_key] || {};
               return (
-                <tr key={student.id} style={{ background: idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                <tr key={student.id} style={{ background: idx % 2 === 0 ? "transparent" : "var(--surface-muted)" }}>
                   <td style={TD}>{idx + 1}</td>
                   <td style={TD}>{student.register_number}</td>
                   <td style={{ ...TD, textAlign: "left", fontWeight: 500 }}>{student.name}</td>
@@ -290,8 +317,8 @@ export default function ExamMarksPage() {
                         <select
                           value={mk[code] ?? ""}
                           onChange={e => setMark(student.id, "sem", code, e.target.value)}
-                          style={{ ...INPUT_STYLE, cursor: "pointer", background: "#1a1a3e", color: activeTab?.color }}>
-                          {GRADES.map(g => <option key={g} value={g} style={{ background: "#13133a" }}>{g || "—"}</option>)}
+                          style={{ ...INPUT_STYLE, cursor: "pointer", background: "var(--bg-surface)", color: activeTab?.color }}>
+                          {GRADES.map(g => <option key={g} value={g} style={{ background: "var(--bg-surface)" }}>{g || "—"}</option>)}
                         </select>
                       ) : (
                         <input
@@ -299,7 +326,10 @@ export default function ExamMarksPage() {
                           value={mk[code] ?? ""}
                           onChange={e => setMark(student.id, activeTab.mark_key, code, e.target.value)}
                           placeholder="—"
-                          style={{ ...INPUT_STYLE, borderColor: `${activeTab?.color}44` }}
+                          title={outOfRange(mk[code]) ? `Marks must be between 0 and ${maxMarks}` : undefined}
+                          style={outOfRange(mk[code])
+                            ? { ...INPUT_STYLE, borderColor: "var(--danger)", background: "var(--danger-bg)", color: "var(--danger)" }
+                            : { ...INPUT_STYLE, borderColor: "var(--border-strong)" }}
                         />
                       )}
                     </td>
@@ -321,6 +351,7 @@ export default function ExamMarksPage() {
       }}>
         <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
           {studentList.length} students · {subjects.length} subjects · {activeTab?.label}
+          {tab !== "semester" && ` · out of ${maxMarks}`}
         </span>
         <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
           {saving ? <span className="spinner" /> : "Save All Marks"}
@@ -335,22 +366,22 @@ export default function ExamMarksPage() {
 const TH = {
   padding: "10px 10px", fontSize: "0.75rem", fontWeight: 700, textAlign: "center",
   color: "var(--text-primary)", borderBottom: "1px solid var(--glass-border)",
-  borderRight: "1px solid rgba(255,255,255,0.05)", whiteSpace: "nowrap",
+  borderRight: "1px solid var(--surface-muted)", whiteSpace: "nowrap",
 };
 
 const TD = {
   padding: "8px 10px", fontSize: "0.8rem", color: "var(--text-secondary)", textAlign: "center",
-  borderBottom: "1px solid rgba(255,255,255,0.04)", borderRight: "1px solid rgba(255,255,255,0.04)",
+  borderBottom: "1px solid var(--surface-muted)", borderRight: "1px solid var(--surface-muted)",
 };
 
 const TD_INPUT = {
-  padding: "4px 6px", borderBottom: "1px solid rgba(255,255,255,0.04)",
-  borderRight: "1px solid rgba(255,255,255,0.04)",
+  padding: "4px 6px", borderBottom: "1px solid var(--surface-muted)",
+  borderRight: "1px solid var(--surface-muted)",
 };
 
 const INPUT_STYLE = {
   width: "100%", minWidth: 60, textAlign: "center", background: "transparent",
-  border: "1px solid rgba(124,58,237,0.25)", borderRadius: 6,
+  border: "1px solid var(--accent-border)", borderRadius: 6,
   color: "var(--text-primary)", fontSize: "0.8rem", padding: "5px 4px",
   outline: "none",
 };

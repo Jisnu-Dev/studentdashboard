@@ -7,3 +7,13 @@ from app.models.counseling import CounselingSession  # noqa: F401
 from app.models.meeting import MentorMeeting  # noqa: F401
 from app.models.meeting_attendance import MeetingAttendance  # noqa: F401
 from app.models.exam import ExamSetup, StudentExamMarks  # noqa: F401
+from app.models.ai_report import AIReport  # noqa: F401
+from app.models.mentor_file import (  # noqa: F401
+    Achievement,
+    CommunicationRecord,
+    Condonation,
+    ParentMeeting,
+    RemedialAction,
+    SemesterResult,
+    StudentDocument,
+)

@@ -12,9 +12,6 @@ export default function ConfirmModal({ title, message, danger, loading, onConfir
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-box" style={{ maxWidth: 400 }}>
         <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <div style={{ fontSize: "2.5rem", marginBottom: 16 }}>
-            {danger ? "⚠️" : "❓"}
-          </div>
           <h3 style={{ marginBottom: 10 }}>{title}</h3>
           <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
             {message}

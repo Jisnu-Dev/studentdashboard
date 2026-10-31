@@ -136,19 +136,19 @@ export default function MeetingDetailPage() {
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="btn btn-ghost btn-sm"
-            style={{ color: "#6ee7b7", borderColor: "rgba(16,185,129,0.3)" }}
+            style={{ color: "var(--success)", borderColor: "var(--success-border)" }}
             onClick={() => router.push(`/dashboard/batches/${batchId}/meetings/${meetingId}/attendance`)}>
-            ✅ Attendance
+            Attendance
           </button>
           <button className="btn btn-ghost btn-sm"
-            style={{ color: "#a78bfa", borderColor: "rgba(124,58,237,0.3)" }}
+            style={{ color: "var(--accent)", borderColor: "var(--accent-border)" }}
             onClick={() => downloadPdf("circular")} disabled={pdfLoading === "circular"}>
-            {pdfLoading === "circular" ? <span className="spinner" /> : "📄 Circular PDF"}
+            {pdfLoading === "circular" ? <span className="spinner" /> : "Circular PDF"}
           </button>
           <button className="btn btn-ghost btn-sm"
-            style={{ color: "#6ee7b7", borderColor: "rgba(16,185,129,0.3)" }}
+            style={{ color: "var(--success)", borderColor: "var(--success-border)" }}
             onClick={() => downloadPdf("minutes")} disabled={pdfLoading === "minutes"}>
-            {pdfLoading === "minutes" ? <span className="spinner" /> : "📄 Minutes PDF"}
+            {pdfLoading === "minutes" ? <span className="spinner" /> : "Minutes PDF"}
           </button>
         </div>
       </div>
@@ -188,9 +188,9 @@ export default function MeetingDetailPage() {
                 <label className="form-label">Year of Study</label>
                 <select className="form-input" value={form.year_of_study} onChange={setE("year_of_study")}
                   style={{ cursor: "pointer" }}>
-                  <option value="" style={{ background: "#13133a" }}>-- Select --</option>
+                  <option value="" style={{ background: "var(--bg-surface)" }}>-- Select --</option>
                   {["I Year","II Year","III Year","IV Year"].map(y => (
-                    <option key={y} value={y} style={{ background: "#13133a" }}>{y}</option>
+                    <option key={y} value={y} style={{ background: "var(--bg-surface)" }}>{y}</option>
                   ))}
                 </select>
               </div>
@@ -200,7 +200,7 @@ export default function MeetingDetailPage() {
               <select className="form-input" value={form.semester}
                 onChange={setE("semester")} style={{ cursor: "pointer" }}>
                 {SEMESTERS.map((s) => (
-                  <option key={s} value={s} style={{ background: "#13133a" }}>{s}</option>
+                  <option key={s} value={s} style={{ background: "var(--bg-surface)" }}>{s}</option>
                 ))}
               </select>
             </div>
@@ -225,7 +225,7 @@ export default function MeetingDetailPage() {
                 {form.agenda_items.length > 1 && (
                   <button type="button" className="btn btn-danger btn-sm"
                     onClick={() => setForm((f) => ({ ...f, agenda_items: f.agenda_items.filter((_, i) => i !== idx) }))}>
-                    ✕
+                    ×
                   </button>
                 )}
               </div>

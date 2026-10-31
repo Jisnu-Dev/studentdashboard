@@ -39,7 +39,7 @@ export default function StudentModal({ mode, initial, onSave, onClose }) {
             onClick={onClose}
             style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "1.2rem" }}
           >
-            ✕
+            ×
           </button>
         </div>
 

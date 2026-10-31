@@ -108,7 +108,6 @@ export default function CounselingListPage() {
 
       {sessions.length === 0 ? (
         <div className="card empty-state">
-          <div className="empty-icon">📋</div>
           <h3>No counseling sessions yet</h3>
           <p style={{ marginBottom: 24 }}>Record the first session for this student.</p>
           <Link
@@ -143,17 +142,17 @@ export default function CounselingListPage() {
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                   <button
                     className="btn btn-ghost btn-sm"
-                    style={{ color: "#a78bfa", borderColor: "rgba(124,58,237,0.3)" }}
+                    style={{ color: "var(--accent)", borderColor: "var(--accent-border)" }}
                     onClick={() => handlePdfDownload(s)}
                     disabled={pdfLoading === s.id}
                   >
-                    {pdfLoading === s.id ? <span className="spinner" /> : "📄 PDF"}
+                    {pdfLoading === s.id ? <span className="spinner" /> : "PDF"}
                   </button>
                   <button
                     className="btn btn-danger btn-sm"
                     onClick={() => setConfirmDelete(s.id)}
                   >
-                    🗑
+                    Delete
                   </button>
                 </div>
               </div>

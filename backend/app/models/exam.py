@@ -30,6 +30,12 @@ class ExamSetup(Base):
     semester: Mapped[str] = mapped_column(String(50), nullable=False)       # e.g. "I Year - Semester I"
     academic_year: Mapped[str] = mapped_column(String(20), nullable=False)  # e.g. "2024-2025"
     subject_codes: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)  # ["CS1001", "MA1001", ...]
+    # Result-analysis details per subject: {"CS1001": {"name": "...", "faculty": "..."}}
+    subject_details: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default="{}")
+    # Maximum marks of each periodical test (e.g. 50 or 100)
+    pt_max_marks: Mapped[int] = mapped_column(Integer, nullable=False, default=100, server_default="100")
+    # Minimum PT mark counted as a pass in the result analysis
+    pt_pass_mark: Mapped[int] = mapped_column(Integer, nullable=False, default=50, server_default="50")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
